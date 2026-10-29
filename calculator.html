@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calculator</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1e1e2f">
+  <link rel="icon" href="icon-192.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #1e1e2f;
+      font-family: Arial, sans-serif;
+    }
+
+    .calculator {
+      width: 320px;
+      background: #2b2b40;
+      padding: 20px;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    }
+
+    /* Display screen */
+    .display {
+      background: #151521;
+      color: #fff;
+      text-align: right;
+      padding: 16px;
+      border-radius: 10px;
+      margin-bottom: 16px;
+      min-height: 80px;
+    }
+    .display .history { font-size: 14px; color: #888; min-height: 18px; }
+    .display .current { font-size: 36px; word-wrap: break-word; }
+
+    /* Buttons grid: 4 columns */
+    .buttons {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+
+    button {
+      padding: 18px 0;
+      font-size: 20px;
+      border: none;
+      border-radius: 10px;
+      background: #3a3a55;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.05s;
+    }
+    button:hover { background: #4b4b6b; }
+    button:active { transform: scale(0.95); }
+
+    button.operator { background: #ff9f43; }
+    button.operator:hover { background: #ffb26b; }
+    button.clear { background: #ee5253; }
+    button.clear:hover { background: #ff6b6b; }
+    button.equals { background: #10ac84; grid-column: span 2; }
+    button.equals:hover { background: #1dd1a1; }
+  </style>
+</head>
+<body>
+
+  <div class="calculator">
+    <div class="display">
+      <div class="history" id="history"></div>
+      <div class="current" id="current">0</div>
+    </div>
+
+    <div class="buttons">
+      <button class="clear" data-action="clear">C</button>
+      <button data-action="delete">⌫</button>
+      <button data-action="percent">%</button>
+      <button class="operator" data-op="/">÷</button>
+
+      <button data-num="7">7</button>
+      <button data-num="8">8</button>
+      <button data-num="9">9</button>
+      <button class="operator" data-op="*">×</button>
+
+      <button data-num="4">4</button>
+      <button data-num="5">5</button>
+      <button data-num="6">6</button>
+      <button class="operator" data-op="-">−</button>
+
+      <button data-num="1">1</button>
+      <button data-num="2">2</button>
+      <button data-num="3">3</button>
+      <button class="operator" data-op="+">+</button>
+
+      <button data-num="0">0</button>
+      <button data-num=".">.</button>
+      <button class="equals" data-action="equals">=</button>
+    </div>
+  </div>
+
+  <script>
+    // ---- State: what the calculator remembers ----
+    let current = "0";      // number being typed
+    let previous = "";      // number typed before the operator
+    let operator = null;    // + - * /
+
+    const currentEl = document.getElementById("current");
+    const historyEl = document.getElementById("history");
+
+    // ---- Update what is shown on screen ----
+    function updateDisplay() {
+      currentEl.textContent = current;
+      const symbols = { "+": "+", "-": "−", "*": "×", "/": "÷" };
+      historyEl.textContent = operator ? previous + " " + symbols[operator] : "";
+    }
+
+    // ---- Typing numbers ----
+    function inputNumber(n) {
+      if (n === "." && current.includes(".")) return;      // only one dot
+      if (current === "0" && n !== ".") current = n;       // replace leading 0
+      else current += n;
+      updateDisplay();
+    }
+
+    // ---- Choosing an operator ----
+    function chooseOperator(op) {
+      if (operator && previous !== "") calculate();        // chain: 2 + 3 + ...
+      operator = op;
+      previous = current;
+      current = "0";
+      updateDisplay();
+    }
+
+    // ---- Do the math ----
+    function calculate() {
+      if (!operator) return;
+      const a = parseFloat(previous);
+      const b = parseFloat(current);
+      let result;
+
+      if (operator === "+") result = a + b;
+      if (operator === "-") result = a - b;
+      if (operator === "*") result = a * b;
+      if (operator === "/") result = b === 0 ? "Error" : a / b;
+
+      // Round to avoid 0.1 + 0.2 = 0.30000000000000004
+      current = result === "Error" ? "Error" : String(parseFloat(result.toFixed(10)));
+      operator = null;
+      previous = "";
+      updateDisplay();
+    }
+
+    function clearAll() {
+      current = "0"; previous = ""; operator = null;
+      updateDisplay();
+    }
+
+    function deleteLast() {
+      current = current.length > 1 && current !== "Error" ? current.slice(0, -1) : "0";
+      updateDisplay();
+    }
+
+    function percent() {
+      current = String(parseFloat(current) / 100);
+      updateDisplay();
+    }
+
+    // ---- Connect buttons to functions ----
+    document.querySelectorAll("button").forEach(btn => {
+      btn.addEventListener("click", () => {
+        if (btn.dataset.num !== undefined) inputNumber(btn.dataset.num);
+        else if (btn.dataset.op) chooseOperator(btn.dataset.op);
+        else if (btn.dataset.action === "equals") calculate();
+        else if (btn.dataset.action === "clear") clearAll();
+        else if (btn.dataset.action === "delete") deleteLast();
+        else if (btn.dataset.action === "percent") percent();
+      });
+    });
+
+    // ---- Keyboard support ----
+    document.addEventListener("keydown", (e) => {
+      if ((e.key >= "0" && e.key <= "9") || e.key === ".") inputNumber(e.key);
+      else if (["+", "-", "*", "/"].includes(e.key)) chooseOperator(e.key);
+      else if (e.key === "Enter" || e.key === "=") calculate();
+      else if (e.key === "Backspace") deleteLast();
+      else if (e.key === "Escape") clearAll();
+    });
+
+    updateDisplay();
+
+    // ---- Register service worker (makes the app installable + offline) ----
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("service-worker.js").catch(console.error);
+      });
+    }
+  </script>
+</body>
+</html>
